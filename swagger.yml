@@ -63,3 +63,23 @@ paths:
               schema:
                 type: string
                 format: binary
+                
+  /image/compressed/{id}:
+    get:
+      summary: "Get original image, converted to specified format"
+      operationId: "getCompressedImg"
+      parameters:
+      - name: id
+        in: path
+        required: true
+        example: "3fa85f64-5717-4562-b3fc-2c963f66afa6.jpg"
+        schema:
+          type: string
+      responses:
+        200:
+          description: "OK"
+          content:
+            image:
+              schema:
+                type: string
+                format: binary
