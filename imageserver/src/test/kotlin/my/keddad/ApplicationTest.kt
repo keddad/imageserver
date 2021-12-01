@@ -17,7 +17,8 @@ class ApplicationTest {
         withTestApplication({ module() }) {
             with(handleRequest(HttpMethod.Post, "/image") {
                 val boundary = "IDontKnowWhatIsThis"
-                val fileBytes = File("ktor_logo.png").readBytes()
+                val fileBytes = File("src/test/kotlin/my/keddad/ktor_logo.png").readBytes()
+
 
                 addHeader(
                     HttpHeaders.ContentType,
