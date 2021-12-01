@@ -14,5 +14,5 @@ jobs:
           java-version: "11"
           distribution: "adopt"
       - name: Run the Gradle package task
-        run: ./imageserver/gradlew build
+        run: ./gradlew build
         working-directory: imageserver
