@@ -14,6 +14,7 @@ fun Application.module() {
     configureMonitoring()
     configureSerialization()
     registerImageRoutes()
+    createStorageFolder()
 }
 
 fun main() {

@@ -24,3 +24,4 @@ hs_err_pid*
 imageserver/.idea
 imageserver/.build
 imageserver/.gradle
+imageserver/data

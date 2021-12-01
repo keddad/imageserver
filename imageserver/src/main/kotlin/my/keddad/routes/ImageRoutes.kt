@@ -6,31 +6,44 @@ import io.ktor.http.content.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import io.ktor.util.*
 import io.ktor.utils.io.core.*
 import io.netty.buffer.ByteBuf
 import my.keddad.models.ImagePostResponse
 import java.nio.ByteBuffer
 import java.util.*
+import java.io.File
+import javax.imageio.ImageIO
+import kotlin.io.path.writeBytes
 
 fun Route.imageRouting() {
     route("/image") {
-        post {
-            val multipartData = call.receiveMultipart();
-            val dataBuffer = ByteBuffer.allocate(1024 * 32) // Max upload size is 32 MB
-            print("Meow!")
+        post { // TODO Handle blocking method calls
+            val multipartData = call.receiveMultipart()
+            val uuid = UUID.randomUUID().toString()
+            val targetFile = File("data/${uuid}.png")
+
+            val tmpFile = kotlin.io.path.createTempFile()
 
             multipartData.forEachPart {
                 when (it) {
                     is PartData.FileItem -> {
-                        val dataBytes = it.streamProvider().readBytes()
-                        dataBuffer.put(dataBytes)
+                        tmpFile.writeBytes(it.streamProvider().readBytes())
                     }
+                    else -> null
                 }
             }
 
-            // TODO Actually write the data somewhere
+            val image = ImageIO.read(tmpFile.toFile())
 
-            call.respond(ImagePostResponse(UUID.randomUUID().toString()))
+            if (image == null) {
+                call.respond(HttpStatusCode.BadRequest)
+                return@post
+            }
+
+            ImageIO.write(image, "png", targetFile)
+
+            call.respond(ImagePostResponse(uuid))
         }
     }
 }

@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
 
 class ApplicationTest {
     @Test
-    fun testPost() {
+    fun testImageUpload() {
         withTestApplication({ module() }) {
             with(handleRequest(HttpMethod.Post, "/image") {
                 val boundary = "IDontKnowWhatIsThis"
@@ -46,6 +46,43 @@ class ApplicationTest {
             }) {
                 assertEquals(HttpStatusCode.OK, response.status())
                 assertEquals(36, Json.decodeFromString<ImagePostResponse>(response.content!!).uuid.length)
+            }
+        }
+    }
+
+    @Test
+    fun testNotImageUpload() {
+        withTestApplication({ module() }) {
+            with(handleRequest(HttpMethod.Post, "/image") {
+                val boundary = "IDontKnowWhatIsThis"
+                val fileBytes = File("src/test/kotlin/my/keddad/not_image").readBytes()
+
+
+                addHeader(
+                    HttpHeaders.ContentType,
+                    ContentType.MultiPart.FormData.withParameter("boundary", boundary).toString()
+                )
+                setBody(boundary, listOf(
+                    PartData.FormItem(
+                        "Ktor logo", { }, headersOf(
+                            HttpHeaders.ContentDisposition,
+                            ContentDisposition.Inline
+                                .withParameter(ContentDisposition.Parameters.Name, "description")
+                                .toString()
+                        )
+                    ),
+                    PartData.FileItem({ fileBytes.inputStream().asInput() }, {}, headersOf(
+                        HttpHeaders.ContentDisposition,
+                        ContentDisposition.File
+                            .withParameter(ContentDisposition.Parameters.Name, "image")
+                            .withParameter(ContentDisposition.Parameters.FileName, "not_image")
+                            .toString()
+                    )
+                    )
+                )
+                )
+            }) {
+                assertEquals(HttpStatusCode.BadRequest, response.status())
             }
         }
     }
