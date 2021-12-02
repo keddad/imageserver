@@ -17,34 +17,46 @@ import javax.imageio.ImageIO
 import kotlin.io.path.writeBytes
 
 fun Route.imageRouting() {
-    route("/image") {
-        post { // TODO Handle blocking method calls
-            val multipartData = call.receiveMultipart()
-            val uuid = UUID.randomUUID().toString()
-            val targetFile = File("data/${uuid}.png")
+    post("/image") {
+        // TODO Handle blocking method calls
+        val multipartData = call.receiveMultipart()
+        val uuid = UUID.randomUUID().toString()
+        val targetFile = File("data/${uuid}.png")
 
-            val tmpFile = kotlin.io.path.createTempFile()
+        val tmpFile = kotlin.io.path.createTempFile()
 
-            multipartData.forEachPart {
-                when (it) {
-                    is PartData.FileItem -> {
-                        tmpFile.writeBytes(it.streamProvider().readBytes())
-                    }
-                    else -> null
+        multipartData.forEachPart {
+            when (it) {
+                is PartData.FileItem -> {
+                    tmpFile.writeBytes(it.streamProvider().readBytes())
                 }
+                else -> null
             }
-
-            val image = ImageIO.read(tmpFile.toFile())
-
-            if (image == null) {
-                call.respond(HttpStatusCode.BadRequest)
-                return@post
-            }
-
-            ImageIO.write(image, "png", targetFile)
-
-            call.respond(ImagePostResponse(uuid))
         }
+
+        val image = ImageIO.read(tmpFile.toFile())
+
+        if (image == null) {
+            call.respond(HttpStatusCode.BadRequest)
+            return@post
+        }
+
+        ImageIO.write(image, "png", targetFile)
+
+        call.respond(ImagePostResponse(uuid))
+
+    }
+    delete("/image/{id}") {
+        val uuid = call.parameters["id"]!!
+        val targetFile = File("data/${uuid}.png")
+
+        if (!targetFile.exists()) {
+            call.respond(HttpStatusCode.NotFound)
+            return@delete
+        }
+
+        targetFile.delete()
+        call.respond(HttpStatusCode.OK)
     }
 }
 
