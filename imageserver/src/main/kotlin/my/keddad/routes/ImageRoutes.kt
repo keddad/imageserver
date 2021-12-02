@@ -10,6 +10,7 @@ import io.ktor.util.*
 import io.ktor.utils.io.core.*
 import io.netty.buffer.ByteBuf
 import my.keddad.models.ImagePostResponse
+import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.util.*
 import java.io.File
@@ -21,7 +22,7 @@ fun Route.imageRouting() {
         // TODO Handle blocking method calls
         val multipartData = call.receiveMultipart()
         val uuid = UUID.randomUUID().toString()
-        val targetFile = File("data/${uuid}.png")
+        val targetFile = File("data/${uuid}/${uuid}.png")
 
         val tmpFile = kotlin.io.path.createTempFile()
 
@@ -41,14 +42,23 @@ fun Route.imageRouting() {
             return@post
         }
 
+        File("data/${uuid}/").mkdirs()
+
         ImageIO.write(image, "png", targetFile)
 
         call.respond(ImagePostResponse(uuid))
 
     }
+
     delete("/image/{id}") {
-        val uuid = call.parameters["id"]!!
-        val targetFile = File("data/${uuid}.png")
+        val uuid = call.parameters["id"]
+
+        if (uuid == null) {
+            call.respond(HttpStatusCode.BadRequest)
+            return@delete
+        }
+
+        val targetFile = File("data/${uuid}/")
 
         if (!targetFile.exists()) {
             call.respond(HttpStatusCode.NotFound)
@@ -57,6 +67,32 @@ fun Route.imageRouting() {
 
         targetFile.delete()
         call.respond(HttpStatusCode.OK)
+    }
+
+    get("/image/{id...}") {
+        val params = call.parameters.getAll("id")?.first()?.split(".")
+
+        if (params?.size != 2) {
+            call.respond(HttpStatusCode.BadRequest)
+            return@get
+        }
+
+        val uuid = params.first()
+        val targetFormat = params.last()
+
+        val origFile = File("data/${uuid}/${uuid}.png")
+        val resultFile = File("data/${uuid}/${uuid}.${targetFormat}")
+
+        if (!origFile.exists()) {
+            call.respond(HttpStatusCode.NotFound)
+            return@get
+        }
+
+        if (!resultFile.exists()) {
+            ImageIO.write(ImageIO.read(origFile), targetFormat, resultFile)
+        }
+
+        call.respondFile(resultFile)
     }
 }
 
