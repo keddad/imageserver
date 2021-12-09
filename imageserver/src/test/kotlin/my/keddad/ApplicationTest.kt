@@ -13,6 +13,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import javax.imageio.ImageIO
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -250,6 +251,47 @@ class ApplicationTest {
                     )
                 )
 
+            }
+        }
+    }
+
+    @Test
+    @Ignore
+    fun testCompressionOk() {
+        withTestApplication({ module() }) {
+            with(handleRequest(HttpMethod.Post, "/image") {
+                val boundary = "IDontKnowWhatIsThis"
+                val fileBytes = File("src/test/kotlin/my/keddad/ktor_logo.png").readBytes()
+
+
+                addHeader(
+                    HttpHeaders.ContentType,
+                    ContentType.MultiPart.FormData.withParameter("boundary", boundary).toString()
+                )
+                setBody(boundary, listOf(
+                    PartData.FormItem(
+                        "Ktor logo", { }, headersOf(
+                            HttpHeaders.ContentDisposition,
+                            ContentDisposition.Inline
+                                .withParameter(ContentDisposition.Parameters.Name, "description")
+                                .toString()
+                        )
+                    ),
+                    PartData.FileItem({ fileBytes.inputStream().asInput() }, {}, headersOf(
+                        HttpHeaders.ContentDisposition,
+                        ContentDisposition.File
+                            .withParameter(ContentDisposition.Parameters.Name, "image")
+                            .withParameter(ContentDisposition.Parameters.FileName, "ktor_logo.png")
+                            .toString()
+                    )
+                    )
+                )
+                )
+            }) {
+                var imageUuid = Json.decodeFromString<ImagePostResponse>(response.content!!).uuid
+
+                val in_r = handleRequest(HttpMethod.Get, "/image/compressed/${imageUuid}.jpg") {}
+                assertEquals(HttpStatusCode.OK, in_r.response.status())
             }
         }
     }

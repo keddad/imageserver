@@ -6,16 +6,18 @@ import io.ktor.http.content.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import io.ktor.util.*
-import io.ktor.utils.io.core.*
-import io.netty.buffer.ByteBuf
 import my.keddad.models.ImagePostResponse
-import java.io.ByteArrayOutputStream
-import java.nio.ByteBuffer
-import java.util.*
 import java.io.File
+import java.util.*
+import javax.imageio.*
 import javax.imageio.ImageIO
+import javax.imageio.ImageWriteParam
+import javax.imageio.IIOImage
+import javax.imageio.ImageWriter
+import javax.imageio.plugins.jpeg.JPEGImageWriteParam
+import javax.imageio.stream.FileImageOutputStream
 import kotlin.io.path.writeBytes
+
 
 fun Route.imageRouting() {
     post("/image") {
@@ -90,6 +92,43 @@ fun Route.imageRouting() {
 
         if (!resultFile.exists()) {
             ImageIO.write(ImageIO.read(origFile), targetFormat, resultFile)
+        }
+
+        call.respondFile(resultFile)
+    }
+
+    get("/image/compressed/{id...}") {
+        val params = call.parameters.getAll("id")?.first()?.split(".")
+
+        if (params?.size != 2) {
+            call.respond(HttpStatusCode.BadRequest)
+            return@get
+        }
+
+        val uuid = params.first()
+        val targetFormat = params.last()
+
+        if (targetFormat != "jpg" && targetFormat != "jpeg") { // TODO Compression of other formats
+            call.respond(HttpStatusCode.BadRequest)
+            return@get
+        }
+
+        val origFile = File("data/${uuid}/${uuid}.png")
+        val resultFile = File("data/${uuid}/compressed_${uuid}.${targetFormat}")
+
+        if (!origFile.exists()) {
+            call.respond(HttpStatusCode.NotFound)
+            return@get
+        }
+
+        if (!resultFile.exists()) {
+            val jpegParams = JPEGImageWriteParam(null)
+            jpegParams.compressionMode = ImageWriteParam.MODE_EXPLICIT
+            jpegParams.compressionQuality = 0.6f
+
+            val writer = ImageIO.getImageWritersByFormatName(targetFormat).next()
+            writer.output = FileImageOutputStream(resultFile)
+            writer.write(null, IIOImage(ImageIO.read(origFile), null, null), jpegParams)
         }
 
         call.respondFile(resultFile)
