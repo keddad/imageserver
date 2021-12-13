@@ -152,7 +152,7 @@ class ApplicationTest {
                 )
                 )
             }) {
-                var uploadedUuid = Json.decodeFromString<ImagePostResponse>(response.content!!).uuid
+                val uploadedUuid = Json.decodeFromString<ImagePostResponse>(response.content!!).uuid
 
                 with(handleRequest(HttpMethod.Delete, "/image/${uploadedUuid}")) {
                     assertEquals(HttpStatusCode.OK, response.status())
@@ -193,7 +193,7 @@ class ApplicationTest {
                 )
                 )
             }) {
-                var imageUuid = Json.decodeFromString<ImagePostResponse>(response.content!!).uuid
+                val imageUuid = Json.decodeFromString<ImagePostResponse>(response.content!!).uuid
 
                 val in_r = handleRequest(HttpMethod.Get, "/image/${imageUuid}.png") {}
                 assertEquals(HttpStatusCode.OK, in_r.response.status())
@@ -240,7 +240,7 @@ class ApplicationTest {
                 )
                 )
             }) {
-                var imageUuid = Json.decodeFromString<ImagePostResponse>(response.content!!).uuid
+                val imageUuid = Json.decodeFromString<ImagePostResponse>(response.content!!).uuid
 
                 val in_r = handleRequest(HttpMethod.Get, "/image/${imageUuid}.webp") {}
                 assertEquals(HttpStatusCode.OK, in_r.response.status())
@@ -257,7 +257,7 @@ class ApplicationTest {
 
     @Test
     @Ignore
-    fun testCompressionOk() {
+    fun testJpegCompressionOk() {
         withTestApplication({ module() }) {
             with(handleRequest(HttpMethod.Post, "/image") {
                 val boundary = "IDontKnowWhatIsThis"
@@ -288,9 +288,49 @@ class ApplicationTest {
                 )
                 )
             }) {
-                var imageUuid = Json.decodeFromString<ImagePostResponse>(response.content!!).uuid
+                val imageUuid = Json.decodeFromString<ImagePostResponse>(response.content!!).uuid
 
                 val in_r = handleRequest(HttpMethod.Get, "/image/compressed/${imageUuid}.jpg") {}
+                assertEquals(HttpStatusCode.OK, in_r.response.status())
+            }
+        }
+    }
+
+    @Test
+    fun testWebpCompressionOk() {
+        withTestApplication({ module() }) {
+            with(handleRequest(HttpMethod.Post, "/image") {
+                val boundary = "IDontKnowWhatIsThis"
+                val fileBytes = File("src/test/kotlin/my/keddad/ktor_logo.png").readBytes()
+
+
+                addHeader(
+                    HttpHeaders.ContentType,
+                    ContentType.MultiPart.FormData.withParameter("boundary", boundary).toString()
+                )
+                setBody(boundary, listOf(
+                    PartData.FormItem(
+                        "Ktor logo", { }, headersOf(
+                            HttpHeaders.ContentDisposition,
+                            ContentDisposition.Inline
+                                .withParameter(ContentDisposition.Parameters.Name, "description")
+                                .toString()
+                        )
+                    ),
+                    PartData.FileItem({ fileBytes.inputStream().asInput() }, {}, headersOf(
+                        HttpHeaders.ContentDisposition,
+                        ContentDisposition.File
+                            .withParameter(ContentDisposition.Parameters.Name, "image")
+                            .withParameter(ContentDisposition.Parameters.FileName, "ktor_logo.png")
+                            .toString()
+                    )
+                    )
+                )
+                )
+            }) {
+                val imageUuid = Json.decodeFromString<ImagePostResponse>(response.content!!).uuid
+
+                val in_r = handleRequest(HttpMethod.Get, "/image/compressed/${imageUuid}.webp") {}
                 assertEquals(HttpStatusCode.OK, in_r.response.status())
             }
         }

@@ -1,5 +1,6 @@
 package my.keddad.routes
 
+import com.luciad.imageio.webp.WebPWriteParam
 import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.http.content.*
@@ -108,10 +109,6 @@ fun Route.imageRouting() {
         val uuid = params.first()
         val targetFormat = params.last()
 
-        if (targetFormat != "jpg" && targetFormat != "jpeg") { // TODO Compression of other formats
-            call.respond(HttpStatusCode.BadRequest)
-            return@get
-        }
 
         val origFile = File("data/${uuid}/${uuid}.png")
         val resultFile = File("data/${uuid}/compressed_${uuid}.${targetFormat}")
@@ -122,13 +119,25 @@ fun Route.imageRouting() {
         }
 
         if (!resultFile.exists()) {
-            val jpegParams = JPEGImageWriteParam(null)
-            jpegParams.compressionMode = ImageWriteParam.MODE_EXPLICIT
-            jpegParams.compressionQuality = 0.6f
+            if (targetFormat == "jpg" || targetFormat == "jpeg") {
+                val jpegParams = JPEGImageWriteParam(null)
+                jpegParams.compressionMode = ImageWriteParam.MODE_EXPLICIT
+                jpegParams.compressionQuality = 0.6f
 
-            val writer = ImageIO.getImageWritersByFormatName(targetFormat).next()
-            writer.output = FileImageOutputStream(resultFile)
-            writer.write(null, IIOImage(ImageIO.read(origFile), null, null), jpegParams)
+                val writer = ImageIO.getImageWritersByFormatName(targetFormat).next()
+                writer.output = FileImageOutputStream(resultFile)
+                writer.write(null, IIOImage(ImageIO.read(origFile), null, null), jpegParams)
+            } else if (targetFormat == "webp") {
+                val writer = ImageIO.getImageWritersByFormatName(targetFormat).next()
+                val webpParams = WebPWriteParam(writer.locale)
+
+                webpParams.compressionType = webpParams.compressionTypes[WebPWriteParam.LOSSY_COMPRESSION]
+                writer.output = FileImageOutputStream(resultFile)
+                writer.write(null, IIOImage(ImageIO.read(origFile), null, null), webpParams)
+            } else {
+                call.respond(HttpStatusCode.BadRequest)
+                return@get
+            }
         }
 
         call.respondFile(resultFile)
